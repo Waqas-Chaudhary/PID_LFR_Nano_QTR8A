@@ -7,6 +7,12 @@
 #define Kp   (double) 0.012 * 2.0
 #define Kd   (double) 0.01 * 10.0
 
+#define LINE_EXTREME_LIMIT_LEFT   0    // position of line when it is at extreme left
+#define LINE_EXTREME_LIMIT_RIGHT  7000 // position of line when it is at extreme right
+#define LINE_CENTER_LIMIT_LEFT    3200 // acceptable center line position on the left side
+#define LINE_CENTER_LIMIT_RIGHT   3800 // acceptable center line position on the right side
+#define CHECK_SIDE_MAX_ITERATIONS 2000 // number of iterations after which the check_side function gives up
+
 void setup()
 {
     Serial.begin(9600);
@@ -42,39 +48,47 @@ void PID(uint16_t position, motor_speeds_t * speeds)
 }
 
 /**
- * @brief This function is used here to get back on line if line is 
- * lost completely.
+ * @brief This function is used to get back on line if line is lost
+ * completely. 0 is one extreme end of the line and 7000 is the other
+ * extreme end of the line.
  * 
  * @param position position of robot
  * @param motor_speeds motor speeds of robot
  */
-void check_side(uint16_t position, motor_speeds_t * motor_speeds)
+// This function checks if the position is at the extreme limits (left or right)
+// and adjusts the motor speeds to bring the position back to the center limits.
+void check_side(uint16_t position, const motor_speeds_t * motor_speeds)
 {
-    if (position == 0)
+    // Function pointer to select the appropriate motor function
+    void (*motor_function)(int, int) = NULL;
+
+    if (position == LINE_EXTREME_LIMIT_LEFT)
     {
-        do
-        {
-            motor_left_sharp(motor_speeds->max, motor_speeds->turn);
-            position = ir_sensors_read_line();
-            Serial.println(position);
-            if ((position > 3200) && (position < 3800))
-            {
-                break;
-            }
-        } while (1);
+        motor_function = motor_left_sharp;
     }
-    else if (position == 7000)
+    else if (position == LINE_EXTREME_LIMIT_RIGHT)
     {
-        do
+        motor_function = motor_right_sharp;
+    }
+    else
+    {
+        motor_function = NULL;
+    }
+
+    // If a motor function is selected, adjust the motor speeds to bring the position back to the center limits.
+    if (motor_function != NULL)
+    {
+        while (CHECK_SIDE_MAX_ITERATIONS)
         {
-            motor_right_sharp(motor_speeds->turn, motor_speeds->turn);
+            motor_function(motor_speeds->max, motor_speeds->turn);
             position = ir_sensors_read_line();
             Serial.println(position);
-            if ((position > 3200) && (position < 3800))
+
+            if ((position > LINE_CENTER_LIMIT_LEFT) && (position < LINE_CENTER_LIMIT_RIGHT))
             {
                 break;
             }
-        } while (1);
+        }
     }
 }
 
