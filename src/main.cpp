@@ -3,10 +3,10 @@
 #include "motor_driver.hpp"
 
 // PID related
-      int    L_Error = 0;          // last error, var to store previous error values.
-const int    Goal    = 3500;       // 3500 is value to keep the robot at centre w.r.t line.
-const double Kp      = 0.012 * 2;
-const double Kd      = 0.01 * 10;
+      int    previous_error = 0;          // last error, var to store previous error values.
+const int    Goal           = 3500;       // 3500 is value to keep the robot at centre w.r.t line.
+const double Kp             = 0.012 * 2.0;
+const double Kd             = 0.01 * 10.0;
 
 void setup()
 {
@@ -15,65 +15,63 @@ void setup()
     ir_sensors_init();
 }
 
-void PID(uint16_t Position, motor_speeds_t * motor_speeds)
+void PID(uint16_t position, motor_speeds_t * speeds)
 {
-    int Error = 0;
-    int Adj   = 0;
+    int error = 0;
+    int pid_output_adjustment   = 0;
 
-    Position = ir_sensors_read_line();
-    Serial.println(Position);
+    position = ir_sensors_read_line();
+    Serial.println(position);
 
-    Error = Goal - Position;
+    error = Goal - position;
     
     // Calculating adjustment to pwm for left & right motors
-    Adj = Kp * Error + Kd * (Error - L_Error);
-    L_Error = Error;
-    motor_speeds->left  = motor_speeds->max - Adj;
-    motor_speeds->right = motor_speeds->max + Adj;
+    pid_output_adjustment = Kp * error + Kd * (error - previous_error);
+    previous_error = error;
 
-    if (motor_speeds->left > motor_speeds->max)
-    {
-        motor_speeds->left = motor_speeds->max;
-    }
-    else if (motor_speeds->left < 0)
-    {
-        motor_speeds->left = 0;
-    }
+    // adjusting motor speeds
+    speeds->left  = speeds->max - pid_output_adjustment;
+    speeds->right = speeds->max + pid_output_adjustment;
 
-    if (motor_speeds->right > motor_speeds->max)
-    {
-        motor_speeds->right = motor_speeds->max;
-    }
-    else if (motor_speeds->right < 0)
-    {
-        motor_speeds->right = 0;
-    }
+    // ceiling and floor conditions for left motor speed
+    speeds->left = (speeds->left > speeds->max) ? speeds->max : speeds->left;
+    speeds->left = (speeds->left < 0) ? 0 : speeds->left;
+
+    // ceiling and floor conditions for right motor speed
+    speeds->right = (speeds->right > speeds->max) ? speeds->max : speeds->right;
+    speeds->right = (speeds->right < 0) ? 0 : speeds->right;
 }
 
-// check_side() is used here to get back on line if line is lost completely.
-void check_side(uint16_t Position, motor_speeds_t * motor_speeds)
+/**
+ * @brief This function is used here to get back on line if line is 
+ * lost completely.
+ * 
+ * @param position position of robot
+ * @param motor_speeds motor speeds of robot
+ */
+void check_side(uint16_t position, motor_speeds_t * motor_speeds)
 {
-    if (Position == 0)
+    if (position == 0)
     {
         do
         {
             sharpL(motor_speeds->max, motor_speeds->turn);
-            Position = ir_sensors_read_line();
-            Serial.println(Position);
-            if ((Position > 3200) && (Position < 3800))
+            position = ir_sensors_read_line();
+            Serial.println(position);
+            if ((position > 3200) && (position < 3800))
             {
                 break;
             }
         } while (1);
     }
-    else if (Position == 7000)
+    else if (position == 7000)
     {
         do
         {
             sharpR(motor_speeds->turn, motor_speeds->turn);
-            Position = ir_sensors_read_line();
-            Serial.println(Position);
-            if ((Position > 3200) && (Position < 3800))
+            position = ir_sensors_read_line();
+            Serial.println(position);
+            if ((position > 3200) && (position < 3800))
             {
                 break;
             }
@@ -84,9 +82,9 @@ void check_side(uint16_t Position, motor_speeds_t * motor_speeds)
 void loop()
 {
     static motor_speeds_t motor_speeds;
-    static uint16_t Position;
+    static uint16_t position;
 
-    PID(Position, &motor_speeds);
+    PID(position, &motor_speeds);
     frd_PWM(motor_speeds.left, motor_speeds.right);
-    check_side(Position, &motor_speeds);
+    check_side(position, &motor_speeds);
 }
