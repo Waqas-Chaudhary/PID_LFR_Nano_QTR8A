@@ -3,10 +3,9 @@
 #include "motor_driver.hpp"
 
 // PID related
-      int    previous_error = 0;          // last error, var to store previous error values.
-const int    Goal           = 3500;       // 3500 is value to keep the robot at centre w.r.t line.
-const double Kp             = 0.012 * 2.0;
-const double Kd             = 0.01 * 10.0;
+#define GOAL (int)    3500         // 3500 is value to keep the robot at centre w.r.t line.
+#define Kp   (double) 0.012 * 2.0
+#define Kd   (double) 0.01 * 10.0
 
 void setup()
 {
@@ -17,21 +16,21 @@ void setup()
 
 void PID(uint16_t position, motor_speeds_t * speeds)
 {
-    int error = 0;
-    int pid_output_adjustment   = 0;
+    int error      = 0;
+    int pid_output = 0;
+    static int previous_error; // last error, var to store previous error values.
 
     position = ir_sensors_read_line();
     Serial.println(position);
 
-    error = Goal - position;
-    
-    // Calculating adjustment to pwm for left & right motors
-    pid_output_adjustment = Kp * error + Kd * (error - previous_error);
+    // PID calculations
+    error = GOAL - position;
+    pid_output = Kp * error + Kd * (error - previous_error);
     previous_error = error;
 
     // adjusting motor speeds
-    speeds->left  = speeds->max - pid_output_adjustment;
-    speeds->right = speeds->max + pid_output_adjustment;
+    speeds->left  = speeds->max - pid_output;
+    speeds->right = speeds->max + pid_output;
 
     // ceiling and floor conditions for left motor speed
     speeds->left = (speeds->left > speeds->max) ? speeds->max : speeds->left;
@@ -81,7 +80,14 @@ void check_side(uint16_t position, motor_speeds_t * motor_speeds)
 
 void loop()
 {
-    static motor_speeds_t motor_speeds;
+    motor_speeds_t motor_speeds = 
+    {
+        .left  = 0,
+        .right = 0,
+        .max   = 65,
+        .turn  = 65,
+    };
+
     static uint16_t position;
 
     PID(position, &motor_speeds);
