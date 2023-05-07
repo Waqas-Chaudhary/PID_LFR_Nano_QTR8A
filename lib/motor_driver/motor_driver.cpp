@@ -14,6 +14,17 @@ void motor_driver_init(void)
     pinMode(IN4, OUTPUT);
 }
 
+void speed_limit_check(motor_speeds_t * speeds)
+{
+    // ceiling and floor conditions for left motor speed
+    speeds->left = (speeds->left > speeds->max) ? speeds->max : speeds->left;
+    speeds->left = (speeds->left < speeds->min) ? speeds->min : speeds->left;
+
+    // ceiling and floor conditions for right motor speed
+    speeds->right = (speeds->right > speeds->max) ? speeds->max : speeds->right;
+    speeds->right = (speeds->right < speeds->min) ? speeds->min : speeds->right;
+}
+
 void motor_forward(int left_pwm_speed, int right_pwm_speed)
 {
     analogWrite(IN1, left_pwm_speed);
