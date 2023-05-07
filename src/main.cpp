@@ -55,7 +55,7 @@ void check_side(uint16_t position, motor_speeds_t * motor_speeds)
     {
         do
         {
-            sharpL(motor_speeds->max, motor_speeds->turn);
+            motor_left_sharp(motor_speeds->max, motor_speeds->turn);
             position = ir_sensors_read_line();
             Serial.println(position);
             if ((position > 3200) && (position < 3800))
@@ -68,7 +68,7 @@ void check_side(uint16_t position, motor_speeds_t * motor_speeds)
     {
         do
         {
-            sharpR(motor_speeds->turn, motor_speeds->turn);
+            motor_right_sharp(motor_speeds->turn, motor_speeds->turn);
             position = ir_sensors_read_line();
             Serial.println(position);
             if ((position > 3200) && (position < 3800))
@@ -85,6 +85,6 @@ void loop()
     static uint16_t position;
 
     PID(position, &motor_speeds);
-    frd_PWM(motor_speeds.left, motor_speeds.right);
+    motor_forward(motor_speeds.left, motor_speeds.right);
     check_side(position, &motor_speeds);
 }

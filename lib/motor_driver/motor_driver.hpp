@@ -13,14 +13,14 @@ typedef struct
 
 void motor_driver_init(void);
 
-void frd_PWM(int L, int R);
+void motor_forward(int left_pwm_speed, int right_pwm_speed);
 
-void bck(int L, int R);
+void motor_backward(int left_pwm_speed, int right_pwm_speed);
 
-void sharpR(int L, int R);
+void motor_right_sharp(int left_pwm_speed, int right_pwm_speed);
 
-void sharpL(int L, int R);
+void motor_left_sharp(int left_pwm_speed, int right_pwm_speed);
 
-void stop();
+void motor_stop(void);
 
 #endif // MOTOR_DRIVER_HPP_

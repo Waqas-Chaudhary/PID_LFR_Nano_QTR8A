@@ -1,7 +1,6 @@
 #include "motor_driver.hpp"
 
-
-// MX1508 Motor Driver Pins
+// Motor Driver Pins
 #define IN1 10
 #define IN2 11
 #define IN3 6
@@ -15,39 +14,39 @@ void motor_driver_init(void)
     pinMode(IN4, OUTPUT);
 }
 
-void frd_PWM(int L, int R)
+void motor_forward(int left_pwm_speed, int right_pwm_speed)
 {
-    analogWrite(IN1, L);
+    analogWrite(IN1, left_pwm_speed);
     analogWrite(IN2, 0);
-    analogWrite(IN3, R);
+    analogWrite(IN3, right_pwm_speed);
     analogWrite(IN4, 0);
 }
 
-void bck(int L, int R)
+void motor_backward(int left_pwm_speed, int right_pwm_speed)
 {
     analogWrite(IN1, 0);
-    analogWrite(IN2, L);
+    analogWrite(IN2, left_pwm_speed);
     analogWrite(IN3, 0);
-    analogWrite(IN4, R);
+    analogWrite(IN4, right_pwm_speed);
 }
 
-void sharpR(int L, int R)
+void motor_right_sharp(int left_pwm_speed, int right_pwm_speed)
 {
-    analogWrite(IN1, L);
+    analogWrite(IN1, left_pwm_speed);
     analogWrite(IN2, 0);
     analogWrite(IN3, 0);
-    analogWrite(IN4, R);
+    analogWrite(IN4, right_pwm_speed);
 }
 
-void sharpL(int L, int R)
+void motor_left_sharp(int left_pwm_speed, int right_pwm_speed)
 {
     analogWrite(IN1, 0);
-    analogWrite(IN2, L);
-    analogWrite(IN3, R);
+    analogWrite(IN2, left_pwm_speed);
+    analogWrite(IN3, right_pwm_speed);
     analogWrite(IN4, 0);
 }
 
-void stop()
+void motor_stop(void)
 {
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, LOW);
