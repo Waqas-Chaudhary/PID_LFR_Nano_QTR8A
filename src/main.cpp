@@ -13,21 +13,11 @@
 #define LINE_CENTER_LIMIT_RIGHT   3800 // acceptable center line position on the right side
 #define CHECK_SIDE_MAX_ITERATIONS 2000 // number of iterations after which the check_side function gives up
 
-void setup()
-{
-    Serial.begin(9600);
-    motor_driver_init();
-    ir_sensors_init();
-}
-
-void PID(uint16_t position, motor_speeds_t * speeds)
+void PID(uint16_t position, motor_speeds_t * motor_speeds)
 {
     int error      = 0;
     int pid_output = 0;
     static int previous_error; // last error, var to store previous error values.
-
-    position = ir_sensors_read_line();
-    Serial.println(position);
 
     // PID calculations
     error = GOAL - position;
@@ -35,16 +25,10 @@ void PID(uint16_t position, motor_speeds_t * speeds)
     previous_error = error;
 
     // adjusting motor speeds
-    speeds->left  = speeds->max - pid_output;
-    speeds->right = speeds->max + pid_output;
+    motor_speeds->left  = motor_speeds->max - pid_output;
+    motor_speeds->right = motor_speeds->max + pid_output;
 
-    // ceiling and floor conditions for left motor speed
-    speeds->left = (speeds->left > speeds->max) ? speeds->max : speeds->left;
-    speeds->left = (speeds->left < 0) ? 0 : speeds->left;
-
-    // ceiling and floor conditions for right motor speed
-    speeds->right = (speeds->right > speeds->max) ? speeds->max : speeds->right;
-    speeds->right = (speeds->right < 0) ? 0 : speeds->right;
+    speed_limit_check(motor_speeds);
 }
 
 /**
@@ -55,13 +39,12 @@ void PID(uint16_t position, motor_speeds_t * speeds)
  * @param position position of robot
  * @param motor_speeds motor speeds of robot
  */
-// This function checks if the position is at the extreme limits (left or right)
-// and adjusts the motor speeds to bring the position back to the center limits.
 void check_side(uint16_t position, const motor_speeds_t * motor_speeds)
 {
     // Function pointer to select the appropriate motor function
     void (*motor_function)(int, int) = NULL;
 
+    // assign the turn function depending on line position
     if (position == LINE_EXTREME_LIMIT_LEFT)
     {
         motor_function = motor_left_sharp;
@@ -75,10 +58,12 @@ void check_side(uint16_t position, const motor_speeds_t * motor_speeds)
         motor_function = NULL;
     }
 
-    // If a motor function is selected, adjust the motor speeds to bring the position back to the center limits.
+    // If a motor function is selected, adjust the motor speeds to bring the 
+    // position back to the center limits.
     if (motor_function != NULL)
     {
-        while (CHECK_SIDE_MAX_ITERATIONS)
+        uint16_t iteration_count = 0;
+        while (iteration_count < CHECK_SIDE_MAX_ITERATIONS)
         {
             motor_function(motor_speeds->max, motor_speeds->turn);
             position = ir_sensors_read_line();
@@ -88,23 +73,43 @@ void check_side(uint16_t position, const motor_speeds_t * motor_speeds)
             {
                 break;
             }
+
+            iteration_count++;
         }
     }
 }
 
-void loop()
+int main(void)
 {
+    Serial.begin(9600);
+    motor_driver_init();
+    ir_sensors_init();
+
     motor_speeds_t motor_speeds = 
     {
         .left  = 0,
         .right = 0,
-        .max   = 65,
         .turn  = 65,
+        .max   = 65,
+        .min   = 0,
     };
 
-    static uint16_t position;
+    while (true)
+    {
+        // input
+        uint16_t position = ir_sensors_read_line();
+        Serial.println(position);
 
-    PID(position, &motor_speeds);
-    motor_forward(motor_speeds.left, motor_speeds.right);
-    check_side(position, &motor_speeds);
+        // PID compute
+        PID(position, &motor_speeds);
+
+        // output -> this is our transfer function I think
+        motor_forward(motor_speeds.left, motor_speeds.right);
+
+        // additional function that should ideally not be used,
+        // PID should handle this case
+        check_side(position, &motor_speeds);
+    }
+
+    return 0;
 }
